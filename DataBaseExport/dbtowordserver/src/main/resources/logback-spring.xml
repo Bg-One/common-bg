@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+configuration是logback的根标签
+scan="true" 表示配置文件发生了改变会自动加载
+scanPeriod="60 seconds" 检测配置文件修改的时间间隔，默认的单位是毫秒，这里设置的表示每分钟检测
+debug="false" debug如果设置为true，表示会打印出来logback自身实时的运行信息，这里就不需要了，因为logback自身运行时非常稳定的，不需要对它做日志
+-->
+<configuration
+        scan="true"
+        scanPeriod="60 seconds"
+        debug="false">
+
+    <!--**************配置********************-->
+
+    <!--优雅关机 为了防止进程退出时，内存中的数据丢失，请加上此选项
+        5 seconds 表示服务会等待5秒后执行释放资源的相关操作，默认位0秒-->
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook">
+        <delay>5 seconds</delay>
+    </shutdownHook>
+
+    <!--**************定义常量参数********************-->
+
+    <!--定义一些参数常量-->
+    <!--定义日志的输出地址 用于windows电脑日志存放地址路径-->
+    <!--    <property name="log.filepath" value="D:\\logfile\\logfile"/>-->
+
+    <!--定义日志的输出地址 用于linux服务器日志存放地址路径
+        source="logging.file.path" 指向 yml 或者 properties 配置文件里面的值-->
+    <springProperty scope="context"  name="log.filepath"  source="logging.file.path"/>
+
+    <property name="max.file.size" value="50MB"/>
+
+    <property name="max.history" value="10"/>
+
+    <property name="global.charset" value="UTF-8"/>
+    <!--
+    定义日志展示格式
+    %d{yyyy-MM-dd HH:mm:ss} 定义一条日志的展示时间
+    [%thread] 表示执行日志的线程名称
+    %-5level 空出5个空格，然后显示日志级别
+    %logger{100} 显示在哪个类（全限定类名）里面记录的日志，后面的{100}表示这个类名展示的最大长度是100
+    %msg 表示的日志信息
+    %n 表示换行
+    -->
+    <property name="log.pattern" value="%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{100} - %msg%n"/>
+
+    <!--彩色日志展示格式-->
+    <property name="console.log.pattern" value="%red(%d{yyyy-MM-dd HH:mm:ss}) %green([%thread]) %highlight(%-5level) %boldMagenta(%logger{36}) - %msg%n"/>
+
+    <!--**************设置输出媒介********************-->
+
+    <!--定义日志输出媒介-->
+    <!--定义控制台输出，class指定的具体输出要使动的类-->
+    <appender name="consoleAppender" class="ch.qos.logback.core.ConsoleAppender">
+        <!--appender其实是负责统一调度日志的输出工作，而具体的日志的格式化工作和输出的工作会交给encoder-->
+        <encoder>
+            <!--定义日志输出的格式-->
+            <pattern>${console.log.pattern}</pattern>
+            <!--设置输出内容编码-->
+            <charset>${global.charset}</charset>
+        </encoder>
+        <!--过滤底层日志记录器向上层抛出的日志
+            因为consoleAppender只需要记录INFO及其以上级别的日志，对于其他的日志不需要，
+            所以只需要下面设置即可实现只显示INFO及其以上级别的日志-->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!--
+    接下来还要定义不同级别的日志输出的媒介
+    对于日志框架来说，日志是有级别的，logback的日志级别有如下：
+    trace(追踪) < debug(调试) < info(记录信息) < warn(警告) < error(错误)
+    再记录日志的时候，一般需要使用到一个Logger类的对象，然后可以调用如下方法：
+    looger.trace("xxxx"),logger.debug("xxxx"),....等等
+    如果记录的日志级别是info的话，info是大于trace和debug的，这个时候调用trace和debug发方法记录的日志是无法显示的。而调用warn和error是可以展示的。
+    一般情况下在开发项目的时候，只需要记录debug,info,error的日志就行了，而这个三个级别的日志需要放在不同的文件中
+    -->
+    <!--定义debug级别的日志输出，RollingFileAppender表示滚动日志，可以按天或者按月来生成不同的日志文件-->
+    <appender name="debugAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!--文件路径-->
+        <file>${log.filepath}/debug.log</file>
+        <!--定义滚动策略,TimeBasedRollingPolicy是一个基于时间的滚动策略-->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!--设置按时间的方式来生成文件，如果文件名是用.gz结尾的，那么logback会自动压
+                缩日志文件，如果不需要压缩，可以直接把.gz删除就行了
+                %d{yyyy-MM-dd} 表示按天保存日志
+                %d{yyyy-MM-dd_HH_mm} 表示按分钟保存日志-->
+            <fileNamePattern>${log.filepath}/debug-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <!--表示日志文件的最大大小，当日志文件达到该大小时，会进行滚动输出，创建一个新的日志文件-->
+            <totalSizeCap>${max.file.size}</totalSizeCap>
+            <!--设置文件最大保存的历史数据，这里就默认30份就行了，也就是最大保存30个文件-->
+            <maxHistory>${max.history}</maxHistory>
+        </rollingPolicy>
+        <!--定义日志格式-->
+        <encoder>
+            <!--定义日志输出的格式-->
+            <pattern>${log.pattern}</pattern>
+            <!--设置输出内容编码-->
+            <charset>${global.charset}</charset>
+        </encoder>
+        <!--需要注意 <onMatch>ACCEPT</onMatch> 和 <onMismatch>DENY</onMismatch>
+            标签只用于日志记录到文件的类型、控制台输出不能使用
+            因为debugAppender只需要记录debug级别的日志，对于其他的日志不需要，
+            所以要加一个过滤器
+            <onMatch>ACCEPT</onMatch> 和 <onMismatch>DENY</onMismatch> 两个标签
+            可以实现只显示某一级别的日志，使用这两个标签后，会把非匹配级别的日志直接过滤掉，
+            如果只是用了 <level>DEBUG</level> 标签，那么设置级别(包括设置的级别)以上
+            的级别都会被记录下来-->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <!--如果是DEBUG日志，同意被记录到文件-->
+            <onMatch>ACCEPT</onMatch>
+            <!--如果不是DEBUG日志，直接忽略-->
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!--定义info级别的日志的appender-->
+    <appender name="infoAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!--文件路径-->
+        <file>${log.filepath}/info.log</file>
+        <!--定义滚动策略,TimeBasedRollingPolicy是一个基于时间的滚动策略-->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!--设置按时间的方式来生成文件，如果文件名是用.gz结尾的，那么logback会自动压
+                缩日志文件，如果不需要压缩，可以直接把.gz删除就行了
+                %d{yyyy-MM-dd} 表示按天保存日志
+                %d{yyyy-MM-dd_HH_mm} 表示按分钟保存日志-->
+            <fileNamePattern>${log.filepath}/info-%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <!--表示日志文件的最大大小，当日志文件达到该大小时，会进行滚动输出，创建一个新的日志文件-->
+            <totalSizeCap>${max.file.size}</totalSizeCap>
+            <!--设置文件最大保存的历史数据，这里就默认30份就行了，也就是最大保存30个文件-->
+            <maxHistory>${max.history}</maxHistory>
+        </rollingPolicy>
+        <!--定义日志格式-->
+        <encoder>
+            <!--定义日志输出的格式-->
+            <pattern>${log.pattern}</pattern>
+            <!--设置输出内容编码-->
+            <charset>${global.charset}</charset>
+        </encoder>
+        <!--需要注意 <onMatch>ACCEPT</onMatch> 和 <onMismatch>DENY</onMismatch>
+            标签只用于日志记录到文件的类型、控制台输出不能使用
+            因为infoAppender只需要记录debug级别的日志，对于其他的日志不需要，
+            所以要加一个过滤器
+            <onMatch>ACCEPT</onMatch> 和 <onMismatch>DENY</onMismatch> 两个标签
+            可以实现只显示某一级别的日志，使用这两个标签后，会把非匹配级别的日志直接过滤掉，
+            如果只是用了 <level>DEBUG</level> 标签，那么设置级别(包括设置的级别)以上
+            的级别都会被记录下来-->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <!--如果是INFO日志，同意被记录到文件-->
+            <onMatch>ACCEPT</onMatch>
+            <!--如果不是INFO日志，直接忽略-->
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!--定义error级别的日志的appender-->
+    <appender name="errorAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!--文件路径-->
+        <file>${log.filepath}/error.log</file>
+        <!--定义滚动策略,TimeBasedRollingPolicy是一个基于时间的滚动策略-->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!--设置按时间的方式来生成文件，如果文件名是用.gz结尾的，那么logback会自动压
+                缩日志文件，如果不需要压缩，可以直接把.gz删除就行了
+                %d{yyyy-MM-dd} 表示按天保存日志
+                %d{yyyy-MM-dd_HH_mm} 表示按分钟保存日志-->
+            <fileNamePattern>${log.filepath}/error-%d{yyyy-MM-dd_HH_mm}.log.gz</fileNamePattern>
+            <!--表示日志文件的最大大小，当日志文件达到该大小时，会进行滚动输出，创建一个新的日志文件-->
+            <totalSizeCap>${max.file.size}</totalSizeCap>
+            <!--设置文件最大保存的历史数据，这里就默认2份就行了，也就是最大保存2个文件-->
+            <maxHistory>${max.history}</maxHistory>
+        </rollingPolicy>
+        <!--定义日志格式-->
+        <encoder>
+            <!--定义日志输出的格式-->
+            <pattern>${log.pattern}</pattern>
+            <!--设置输出内容编码-->
+            <charset>${global.charset}</charset>
+        </encoder>
+        <!--需要注意 <onMatch>ACCEPT</onMatch> 和 <onMismatch>DENY</onMismatch>
+            标签只用于日志记录到文件的类型、控制台输出不能使用
+            因为errorAppender只需要记录debug级别的日志，对于其他的日志不需要，
+            所以要加一个过滤器
+            <onMatch>ACCEPT</onMatch> 和 <onMismatch>DENY</onMismatch> 两个标签
+            可以实现只显示某一级别的日志，使用这两个标签后，会把非匹配级别的日志直接过滤掉，
+            如果只是用了 <level>DEBUG</level> 标签，那么设置级别(包括设置的级别)以上
+            的级别都会被记录下来-->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <!--如果是ERROR日志，同意被记录到文件-->
+            <onMatch>ACCEPT</onMatch>
+            <!--如果不是ERROR日志，直接忽略-->
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!--**************设置日志记录器(日志记录器+输出媒介即可输出日志)********************-->
+    <!--注意一：日志记录器和输出媒介都可以设置日志输出级别，日志记录器是第一层过滤，输出媒介是第二层过滤
+        注意二：自定义的日志记录器优先级大于根日志记录器-->
+
+    <!--根日志记录器，所有包下面的日志都会被记录-->
+    <root level="DEBUG">
+        <appender-ref ref="debugAppender"/>
+        <appender-ref ref="infoAppender"/>
+        <appender-ref ref="errorAppender"/>
+    </root>
+
+    <!--根日志记录器，所有包下面的日志都会被记录-->
+    <root level="DEBUG">
+        <appender-ref ref="consoleAppender"/>
+    </root>
+
+    <!--自定义记录器
+        配置自己写的代码的日志记录器
+        name="com.dkk" 表示对应包(包含子包)里面的代码产生的日志，会被下面的日志记录器记录，否则不会被记录
+        level="DEBUG" 表示日志记录的级别是DEBUG，如果不指定level的时候，这个日志记录器对应的级别自动继承根记录器
+        additivity="true" 表示日志事件是否向父节点logger传递。当additivity属性设置为true时，日志事件不仅会被当前logger处理，也会被传递给父节点logger进行处理。这意味着，如果一个logger的配置的appender（媒介输出器）是上级logger（如root logger也就是根记录器）配置的appender，那么当此logger的additivity属性为true时，日志信息会同时输出到当前logger和上级logger的appender中。反之，如果additivity属性设为false，则日志事件只会被当前的logger处理，不会传递给上级logger。因此，根据实际的项目需求，可以灵活设置additivity属性来控制日志信息的输出路径-->
+    <logger name="com.zdx" level="ERROR" additivity="true">
+        <appender-ref ref="consoleAppender"/>
+    </logger>
+</configuration>

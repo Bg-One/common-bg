@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: DbToWord
+  profiles:
+    active: dev
+  web:
+    resources:
+      static-locations: classpath:/build/
+logging:
+  config: classpath:logback-spring.xml
